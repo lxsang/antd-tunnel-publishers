@@ -14,6 +14,8 @@
 #define    CHANNEL_OPEN             (uint8_t)0x4
 #define    CHANNEL_CLOSE            (uint8_t)0x5
 #define    CHANNEL_DATA             (uint8_t)0x6
+#define    CHANNEL_UNSUBSCRIBE      (uint8_t)0x3
+#define    CHANNEL_SUBSCRIBE        (uint8_t)0x2
 
 typedef struct {
     uint8_t type;
