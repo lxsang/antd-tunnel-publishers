@@ -12,7 +12,22 @@ AC_PROG_CC
 AC_PROG_LIBTOOL
 
 AC_DEFINE([_GNU_SOURCE], [1],[Use GNU source])
-# AC_CANONICAL_HOST is needed to access the 'host_os' variable    
+# AC_CANONICAL_HOST is needed to access the 'host_os' variable
+
+has_antd=no
+# check for lib antd
+AC_CHECK_HEADER([antd/plugin.h],[
+    has_antd=yes
+    # check if the library exists
+],[
+    AC_MSG_ERROR([Unable to find antd, please install it first])
+])
+AC_CHECK_LIB([antd],[antd_send],[],[
+    if test "$has_antd" = "yes"; then
+        AC_MSG_ERROR([Unable to find antd shared library, please install it first])
+    fi
+])
+
 
 # debug option
 AC_ARG_ENABLE([debug],

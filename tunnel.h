@@ -16,6 +16,7 @@
 #define    CHANNEL_DATA             (uint8_t)0x6
 #define    CHANNEL_UNSUBSCRIBE      (uint8_t)0x3
 #define    CHANNEL_SUBSCRIBE        (uint8_t)0x2
+#define    CHANNEL_CTRL             (uint8_t)0x7
 
 typedef struct {
     uint8_t type;

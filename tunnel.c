@@ -17,12 +17,12 @@ static int msg_check_number(int fd, int number)
     int value;
     if(read(fd,&value,sizeof(value)) == -1)
     {
-        ERROR(MODULE_NAME, "Unable to read integer value: %s", strerror(errno));
+        M_ERROR(MODULE_NAME, "Unable to read integer value: %s", strerror(errno));
         return -1;
     }
     if(number != value)
     {
-        ERROR(MODULE_NAME, "Value mismatches: %04X, expected %04X", value, number);
+        M_ERROR(MODULE_NAME, "Value mismatches: %04X, expected %04X", value, number);
         return -1;
     }
     return 0;
@@ -32,17 +32,17 @@ static int msg_read_string(int fd, char* buffer, uint8_t max_length)
     uint8_t size;
     if(read(fd,&size,sizeof(size)) == -1)
     {
-        ERROR(MODULE_NAME, "Unable to read string size: %s", strerror(errno));
+        M_ERROR(MODULE_NAME, "Unable to read string size: %s", strerror(errno));
         return -1;
     }
     if(size > max_length)
     {
-        ERROR(MODULE_NAME, "String length exceeds the maximal value of %d", max_length);
+        M_ERROR(MODULE_NAME, "String length exceeds the maximal value of %d", max_length);
         return -1;
     }
     if(read(fd,buffer,size) == -1)
     {
-        ERROR(MODULE_NAME, "Unable to read string to buffer: %s", strerror(errno));
+        M_ERROR(MODULE_NAME, "Unable to read string to buffer: %s", strerror(errno));
         return -1;
     }
     return 0;
@@ -53,7 +53,7 @@ static uint8_t* msg_read_payload(int fd, int* size)
     uint8_t* data;
     if(read(fd,size,sizeof(*size)) == -1)
     {
-        ERROR(MODULE_NAME, "Unable to read payload data size: %s", strerror(errno));
+        M_ERROR(MODULE_NAME, "Unable to read payload data size: %s", strerror(errno));
         return NULL;
     }
     if(*size <= 0)
@@ -64,12 +64,12 @@ static uint8_t* msg_read_payload(int fd, int* size)
     data = (uint8_t*) malloc(*size);
     if(data == NULL)
     {
-        ERROR(MODULE_NAME, "Unable to allocate memory for payload data: %s", strerror(errno));
+        M_ERROR(MODULE_NAME, "Unable to allocate memory for payload data: %s", strerror(errno));
         return NULL;
     }
     if(read(fd,data,*size) == -1)
     {
-        ERROR(MODULE_NAME, "Unable to read payload data to buffer: %s", strerror(errno));
+        M_ERROR(MODULE_NAME, "Unable to read payload data to buffer: %s", strerror(errno));
         free(data);
         return NULL;
     }
@@ -86,15 +86,15 @@ int open_unix_socket(char* path)
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if(fd == -1)
     {
-        ERROR(MODULE_NAME, "Unable to create Unix domain socket: %s", strerror(errno));
+        M_ERROR(MODULE_NAME, "Unable to create Unix domain socket: %s", strerror(errno));
         return -1;
     }
     if(connect(fd, (struct sockaddr*)(&address), sizeof(address)) == -1)
     {
-        ERROR(MODULE_NAME, "Unable to connect to socket '%s': %s", address.sun_path, strerror(errno));
+        M_ERROR(MODULE_NAME, "Unable to connect to socket '%s': %s", address.sun_path, strerror(errno));
         return -1;
     }
-    LOG(MODULE_NAME, "Socket %s is created successfully", path);
+    M_LOG(MODULE_NAME, "Socket %s is created successfully", path);
     return fd;
 }
 
@@ -103,32 +103,32 @@ int msg_read(int fd, tunnel_msg_t* msg)
 {
     if(msg_check_number(fd, MSG_MAGIC_BEGIN) == -1)
     {
-        ERROR(MODULE_NAME, "Unable to check begin magic number");
+        M_ERROR(MODULE_NAME, "Unable to check begin magic number");
         return -1;
     }
     if(read(fd,&msg->header.type,sizeof(msg->header.type)) == -1)
     {
-        ERROR(MODULE_NAME, "Unable to read msg type: %s", strerror(errno));
+        M_ERROR(MODULE_NAME, "Unable to read msg type: %s", strerror(errno));
         return -1;
     }
-    if(msg->header.type > 0x6)
+    if(msg->header.type > 0x7)
     {
-        ERROR(MODULE_NAME, "Unknown msg type: %d", msg->header.type);
+        M_ERROR(MODULE_NAME, "Unknown msg type: %d", msg->header.type);
         return -1;
     }
     if(read(fd, &msg->header.channel_id, sizeof(msg->header.channel_id)) == -1)
     {
-        ERROR(MODULE_NAME, "Unable to read msg channel id");
+        M_ERROR(MODULE_NAME, "Unable to read msg channel id");
         return -1;
     }
     if(read(fd, &msg->header.client_id, sizeof(msg->header.client_id)) == -1)
     {
-        ERROR(MODULE_NAME, "Unable to read msg client id");
+        M_ERROR(MODULE_NAME, "Unable to read msg client id");
         return -1;
     }
     if((msg->data = msg_read_payload(fd, &msg->header.size)) == NULL && msg->header.size != 0)
     {
-        ERROR(MODULE_NAME, "Unable to read msg payload data");
+        M_ERROR(MODULE_NAME, "Unable to read msg payload data");
         return -1;
     }
     if(msg_check_number(fd, MSG_MAGIC_END) == -1)
@@ -137,7 +137,7 @@ int msg_read(int fd, tunnel_msg_t* msg)
         {
             free(msg->data);
         }
-        ERROR(MODULE_NAME, "Unable to check end magic number");
+        M_ERROR(MODULE_NAME, "Unable to check end magic number");
         return -1;
     }
     return 0;
@@ -149,32 +149,32 @@ int msg_write(int fd, tunnel_msg_t* msg)
     int number = MSG_MAGIC_BEGIN;
     if(write(fd,&number, sizeof(number)) == -1)
     {
-        ERROR(MODULE_NAME, "Unable to write begin magic number: %s", strerror(errno));
+        M_ERROR(MODULE_NAME, "Unable to write begin magic number: %s", strerror(errno));
         return -1;
     }
     // write type
     if(write(fd,&msg->header.type, sizeof(msg->header.type)) == -1)
     {
-        ERROR(MODULE_NAME, "Unable to write msg type: %s", strerror(errno));
+        M_ERROR(MODULE_NAME, "Unable to write msg type: %s", strerror(errno));
         return -1;
     }
     // write channel id
     if(write(fd,&msg->header.channel_id, sizeof(msg->header.channel_id)) == -1)
     {
-        ERROR(MODULE_NAME, "Unable to write msg channel id: %s", strerror(errno));
+        M_ERROR(MODULE_NAME, "Unable to write msg channel id: %s", strerror(errno));
         return -1;
     }
     //write client id
     if(write(fd,&msg->header.client_id, sizeof(msg->header.client_id)) == -1)
     {
-        ERROR(MODULE_NAME, "Unable to write msg client id: %s", strerror(errno));
+        M_ERROR(MODULE_NAME, "Unable to write msg client id: %s", strerror(errno));
         return -1;
     }
     // write payload len
     
     if(write(fd,&msg->header.size, sizeof(msg->header.size)) == -1)
     {
-        ERROR(MODULE_NAME, "Unable to write msg payload length: %s", strerror(errno));
+        M_ERROR(MODULE_NAME, "Unable to write msg payload length: %s", strerror(errno));
         return -1;
     }
     // write payload data
@@ -182,14 +182,14 @@ int msg_write(int fd, tunnel_msg_t* msg)
     {
         if(write(fd,msg->data, msg->header.size) == -1)
         {
-            ERROR(MODULE_NAME, "Unable to write msg payload: %s", strerror(errno));
+            M_ERROR(MODULE_NAME, "Unable to write msg payload: %s", strerror(errno));
             return -1;
         }
     }
     number = MSG_MAGIC_END;
     if(write(fd,&number, sizeof(number)) == -1)
     {
-        ERROR(MODULE_NAME, "Unable to write end magic number: %s", strerror(errno));
+        M_ERROR(MODULE_NAME, "Unable to write end magic number: %s", strerror(errno));
         return -1;
     }
     return 0;
