@@ -133,9 +133,15 @@ static void terminal_kill(int client_id, int should_delete)
             {
                 M_ERROR(MODULE_NAME, "Unable to kill process %d: %s", proc->pid, strerror(errno));
             }
+            else
+            {
+                (void)waitpid(proc->pid, NULL, 0);
+            }
             free(node->data);
             if(should_delete)
                 processes = bst_delete(processes, node->key);
+            // wait child
+
         }
     }
 }
