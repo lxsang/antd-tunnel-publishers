@@ -68,7 +68,7 @@ AM_CONDITIONAL([OSX], [test "$build_mac" = "yes"])
 # find a file called Makefile.in, substitute placeholders
 # like @PACKAGE_VERSION@ with values like 0.1.0a, 
 # and write the results to Makefile.
-AC_CONFIG_FILES([Makefile vterm/Makefile])
+AC_CONFIG_FILES([Makefile vterm/Makefile wfifo/Makefile])
 
 # output the script:
 AC_OUTPUT

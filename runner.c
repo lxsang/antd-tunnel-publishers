@@ -14,7 +14,7 @@
 
 static volatile int running = 1;
 static list_t pids;
-static char socket_file[BUFFLEN];
+
 static void int_handler(int dummy) {
     (void) dummy;
     running = 0;
@@ -24,17 +24,29 @@ static int ini_handle(void *user_data, const char *section, const char *name,
                       const char *value)
 {
     pid_t pid;
-    char* argv[3];
+    char* argv[11];
+    list_t list;
+    item_t item;
+    int i;
     UNUSED(user_data);
     if (EQU(section, "RUNNER"))
     {
-        if(EQU(name, "socket"))
+        if(EQU(name, "service"))
         {
-            M_LOG(MODULE_NAME, "Configuration file is %s", value);
-            (void)strncpy(socket_file,value,BUFFLEN);
-        }
-        else if(EQU(name, "service"))
-        {
+            list = split(value, " ");
+            i = list_size(list);
+            if( i > 10)
+            {
+                M_ERROR(MODULE_NAME, "Too many arguments %d, expected max 10", i);
+                return 0;
+            }
+            i = 0;
+            list_for_each(item, list)
+            {
+                argv[i] = item->value.ptr;
+                i++;
+            }
+            argv[i] = NULL;
             M_LOG(MODULE_NAME, "Running service %s...", value);
             pid = fork();
             if(pid  == -1)
@@ -45,14 +57,12 @@ static int ini_handle(void *user_data, const char *section, const char *name,
             if(pid == 0)
             {
                 // child
-                argv[0] = (char*)value;
-                argv[1] = (char*)socket_file;
-                argv[2] = NULL;
                 execve(argv[0], &argv[0], NULL);
                 // Nothing below this line should be executed by child process. If so,
                 // it means that the execl function wasn't successfull, so lets exit:
                 _exit(1);
             }
+            list_free(&list);
             // parent
             list_put_i(&pids, pid);
         }

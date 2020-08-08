@@ -401,7 +401,6 @@ int main(int argc, char** argv)
                     if(msg_read(fd, &msg) == -1)
                     {
                         M_ERROR(MODULE_NAME, "Unable to read message from channel. quit");
-                        (void) close(fd);
                         running = 0;
                     }
                     else
