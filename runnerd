@@ -1,0 +1,2 @@
+#! /bin/bash
+/opt/www/bin/runner /opt/www/runner.ini

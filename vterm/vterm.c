@@ -14,7 +14,7 @@
 #include <antd/list.h>
 #include <antd/bst.h>
 
-#include "tunnel.h"
+#include "../tunnel.h"
 
 #define MODULE_NAME     "vterm"
 
@@ -319,6 +319,8 @@ int main(int argc, char** argv)
         printf("Usage: %s path/to/hotline/socket\n", argv[0]);
         return -1;
     }
+    signal(SIGPIPE, SIG_IGN);
+	signal(SIGABRT, SIG_IGN);
     signal(SIGINT, int_handler);
     M_LOG(MODULE_NAME, "Hotline is: %s", argv[1]);
     // now try to request new channel from hotline

@@ -1,0 +1,12 @@
+[Unit]
+Description=Antd Publisher Service
+After=antd.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/www
+ExecStart=/opt/www/bin/runnerd
+
+[Install]
+WantedBy=multi-user.target
