@@ -3,7 +3,7 @@ AC_INIT([antd-publishers], [0.1.0a], [xsang.le@gmail.com])
 
 # We’re going to use automake for this project
 # [subdir-objects] if needed
-AM_INIT_AUTOMAKE()
+AM_INIT_AUTOMAKE([subdir-objects])
 
 # dependencies
 # C compiler
