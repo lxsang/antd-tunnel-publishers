@@ -121,6 +121,14 @@ int main(int argc, char** argv)
         if(msg.data)
             free(msg.data);
     }
+    else
+    {
+        M_ERROR(MODULE_NAME, "Channel is not created: %s. Tunnel service responds with msg of type %d", argv[2], msg.header.type);
+        if(msg.data)
+            free(msg.data);
+        running = 0;
+    }
+    
 
     // now read data
     while(running)
@@ -187,7 +195,7 @@ int main(int argc, char** argv)
                                 msg.header.type = CHANNEL_ERROR;
                                 msg.header.size = strlen(buff);
                                 tmp = msg.data;
-                                msg.data = buff;
+                                msg.data = (uint8_t*)buff;
                                 if(msg_write(fd, &msg) == -1)
                                 {
                                     M_ERROR(MODULE_NAME, "Unable to write message to hotline");
@@ -221,7 +229,7 @@ int main(int argc, char** argv)
                     {
                         msg.header.type = CHANNEL_DATA;
                         msg.header.size = status;
-                        msg.data = buff;
+                        msg.data = (uint8_t*)buff;
                         fargv[0] = (void*) &msg;
                         fargv[1] = (void*) &fd;
                         bst_for_each(clients, send_data, fargv, 2);

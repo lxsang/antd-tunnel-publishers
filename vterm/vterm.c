@@ -357,6 +357,13 @@ int main(int argc, char** argv)
         if(msg.data)
             free(msg.data);
     }
+    else
+    {
+        M_ERROR(MODULE_NAME, "Channel is not created: %s. Tunnel service responds with msg of type %d", MODULE_NAME, msg.header.type);
+        if(msg.data)
+            free(msg.data);
+        running = 0;
+    }
 
     // now read data
     while(running)
