@@ -13,6 +13,7 @@
 
 #include <antd/list.h>
 #include <antd/bst.h>
+#include <antd/utils.h>
 
 #include "../tunnel.h"
 
@@ -368,8 +369,6 @@ int main(int argc, char** argv)
     // now read data
     while(running)
     {
-        timeout.tv_sec = 0;
-	    timeout.tv_usec = 500;
         FD_ZERO(&fd_in);
         FD_SET(fd, &fd_in);
         maxfd = fd;
@@ -388,7 +387,7 @@ int main(int argc, char** argv)
         }
         list_free(&list);
         
-        status = select(maxfd + 1, &fd_in, NULL, NULL, &timeout);
+        status = select(maxfd + 1, &fd_in, NULL, NULL, NULL);
         
         switch (status)
 	    {
@@ -397,9 +396,6 @@ int main(int argc, char** argv)
                 running = 0;
                 break;
             case 0:
-                timeout.tv_sec = 0;
-                timeout.tv_usec = 10000; // 5 ms
-                select(0, NULL, NULL, NULL, &timeout);
                 break;
             // we have data
             default:

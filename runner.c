@@ -8,6 +8,7 @@
 #include <sys/wait.h>
 #include <antd/list.h>
 #include <antd/ini.h>
+#include <antd/utils.h>
 #include "log.h"
 
 #define MODULE_NAME     "runner"
