@@ -6,8 +6,10 @@
 #define MAX_CHANNEL_PATH            108
 #define MAX_CHANNEL_NAME            64
 
+#ifdef VERIFY_HEADER
 #define MSG_MAGIC_BEGIN             0x414e5444 //ANTD
 #define MSG_MAGIC_END               0x44544e41 //DTNA
+#endif
 
 #define    CHANNEL_OK               (uint8_t)0x0
 #define    CHANNEL_ERROR            (uint8_t)0x1
