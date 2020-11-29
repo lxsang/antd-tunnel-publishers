@@ -6,10 +6,8 @@
 #define MAX_CHANNEL_PATH            108
 #define MAX_CHANNEL_NAME            64
 
-#ifdef VERIFY_HEADER
-#define MSG_MAGIC_BEGIN             0x414e5444 //ANTD
-#define MSG_MAGIC_END               0x44544e41 //DTNA
-#endif
+#define MSG_MAGIC_BEGIN             (uint16_t)0x414e //AN
+#define MSG_MAGIC_END               (uint16_t)0x5444 //TD
 
 #define    CHANNEL_OK               (uint8_t)0x0
 #define    CHANNEL_ERROR            (uint8_t)0x1
@@ -22,9 +20,9 @@
 
 typedef struct {
     uint8_t type;
-    int channel_id;
-    int client_id;
-    int size;
+    uint16_t channel_id;
+    uint16_t client_id;
+    uint16_t size;
 } tunnel_msg_h_t;
 
 typedef struct{

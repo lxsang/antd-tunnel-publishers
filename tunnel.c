@@ -12,9 +12,9 @@
 #define MODULE_NAME "api"
 
 
-static int msg_check_number(int fd, int number)
+static int msg_check_number(int fd, uint16_t number)
 {
-    int value;
+    uint16_t value;
     if(read(fd,&value,sizeof(value)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to read integer value: %s", strerror(errno));
@@ -48,7 +48,7 @@ static int msg_read_string(int fd, char* buffer, uint8_t max_length)
     return 0;
 }
 
-static uint8_t* msg_read_payload(int fd, int* size)
+static uint8_t* msg_read_payload(int fd, uint16_t* size)
 {
     uint8_t* data;
     if(read(fd,size,sizeof(*size)) == -1)
@@ -101,13 +101,11 @@ int open_unix_socket(char* path)
 
 int msg_read(int fd, tunnel_msg_t* msg)
 {
-#ifdef VERIFY_HEADER
     if(msg_check_number(fd, MSG_MAGIC_BEGIN) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to check begin magic number");
         return -1;
     }
-#endif
     if(read(fd,&msg->header.type,sizeof(msg->header.type)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to read msg type: %s", strerror(errno));
@@ -133,7 +131,6 @@ int msg_read(int fd, tunnel_msg_t* msg)
         M_ERROR(MODULE_NAME, "Unable to read msg payload data");
         return -1;
     }
-#ifdef VERIFY_HEADER
     if(msg_check_number(fd, MSG_MAGIC_END) == -1)
     {
         if(msg->data)
@@ -143,21 +140,18 @@ int msg_read(int fd, tunnel_msg_t* msg)
         M_ERROR(MODULE_NAME, "Unable to check end magic number");
         return -1;
     }
-#endif
     return 0;
 }
 
 int msg_write(int fd, tunnel_msg_t* msg)
 {
-#ifdef VERIFY_HEADER
     // write begin magic number
-    int number = MSG_MAGIC_BEGIN;
+    uint16_t number = MSG_MAGIC_BEGIN;
     if(write(fd,&number, sizeof(number)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to write begin magic number: %s", strerror(errno));
         return -1;
     }
-#endif
     // write type
     if(write(fd,&msg->header.type, sizeof(msg->header.type)) == -1)
     {
@@ -192,13 +186,11 @@ int msg_write(int fd, tunnel_msg_t* msg)
             return -1;
         }
     }
-#ifdef VERIFY_HEADER
     number = MSG_MAGIC_END;
     if(write(fd,&number, sizeof(number)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to write end magic number: %s", strerror(errno));
         return -1;
     }
-#endif
     return 0;
 }
