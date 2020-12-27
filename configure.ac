@@ -29,6 +29,21 @@ AC_CHECK_LIB([antd],[antd_send],[],[
 ])
 
 
+cam_enable=no
+# check videodev
+AC_CHECK_HEADER([linux/videodev2.h],[
+    # check libjpeg
+    AC_CHECK_HEADER([jpeglib.h],[
+        # check libjpeg
+        AC_CHECK_LIB([jpeg],[jpeg_CreateCompress],[
+            cam_enable=yes
+        ],[])
+    ],[])
+],[])
+
+AC_CHECK_LIB([jpeg],[jpeg_CreateCompress],[], [])
+
+
 # debug option
 AC_ARG_ENABLE([debug],
     [  --enable-debug    Turn on debugging],
@@ -64,11 +79,20 @@ esac
 AM_CONDITIONAL([LINUX], [test "$build_linux" = "yes"])
 AM_CONDITIONAL([WINDOWS], [test "$build_windows" = "yes"])
 AM_CONDITIONAL([OSX], [test "$build_mac" = "yes"])
+AM_CONDITIONAL([ENABLE_CAM], [test "$cam_enable" = "yes"])
 
 # find a file called Makefile.in, substitute placeholders
 # like @PACKAGE_VERSION@ with values like 0.1.0a, 
 # and write the results to Makefile.
-AC_CONFIG_FILES([Makefile vterm/Makefile wfifo/Makefile])
+AC_CONFIG_FILES([
+    Makefile 
+    vterm/Makefile
+    wfifo/Makefile
+])
+
+if test x"${cam_enable}" == x"yes" ; then
+    AC_CONFIG_FILES([v4l2cam/Makefile])
+fi
 
 # output the script:
 AC_OUTPUT

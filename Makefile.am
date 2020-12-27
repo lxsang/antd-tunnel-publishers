@@ -16,3 +16,7 @@ install-data-local:
 EXTRA_DIST = runner.ini runnerd tunnel.h antd-tunnel-publisher.service log.h
 
 SUBDIRS = . vterm wfifo
+
+if ENABLE_CAM
+    SUBDIRS += v4l2cam
+endif
