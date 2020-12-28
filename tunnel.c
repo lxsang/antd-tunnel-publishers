@@ -11,11 +11,58 @@
 
 #define MODULE_NAME "api"
 
+static int guard_read(int fd, void* buffer, size_t size)
+{
+    int n = 0;
+    int read_len;
+    int st;
+    while(n != (int)size)
+    {
+        read_len = (int)size - n;
+        st = read(fd,buffer + n,read_len);
+        if(st == -1)
+        {
+            M_ERROR(MODULE_NAME, "Unable to read from #%d: %s", fd, strerror(errno));
+            return -1;
+        }
+        if(st == 0)
+        {
+            M_ERROR(MODULE_NAME,"Endpoint %d is closed", fd);
+            return -1;
+        }
+        n += st;
+    }
+    return n;
+}
+
+static int guard_write(int fd, void* buffer, size_t size)
+{
+    int n = 0;
+    int write_len;
+    int st;
+    while(n != (int)size)
+    {
+        write_len = (int)size - n;
+        st = write(fd,buffer + n,write_len);
+        if(st == -1)
+        {
+            M_ERROR(MODULE_NAME,"Unable to write to #%d: %s", fd, strerror(errno));
+            return -1;
+        }
+        if(st == 0)
+        {
+            M_ERROR(MODULE_NAME,"Endpoint %d is closed", fd);
+            return -1;
+        }
+        n += st;
+    }
+    return n;
+}
 
 static int msg_check_number(int fd, uint16_t number)
 {
     uint16_t value;
-    if(read(fd,&value,sizeof(value)) == -1)
+    if(guard_read(fd,&value,sizeof(value)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to read integer value: %s", strerror(errno));
         return -1;
@@ -30,7 +77,7 @@ static int msg_check_number(int fd, uint16_t number)
 static int msg_read_string(int fd, char* buffer, uint8_t max_length)
 {
     uint8_t size;
-    if(read(fd,&size,sizeof(size)) == -1)
+    if(guard_read(fd,&size,sizeof(size)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to read string size: %s", strerror(errno));
         return -1;
@@ -40,7 +87,7 @@ static int msg_read_string(int fd, char* buffer, uint8_t max_length)
         M_ERROR(MODULE_NAME, "String length exceeds the maximal value of %d", max_length);
         return -1;
     }
-    if(read(fd,buffer,size) == -1)
+    if(guard_read(fd,buffer,size) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to read string to buffer: %s", strerror(errno));
         return -1;
@@ -51,7 +98,7 @@ static int msg_read_string(int fd, char* buffer, uint8_t max_length)
 static uint8_t* msg_read_payload(int fd, uint32_t* size)
 {
     uint8_t* data;
-    if(read(fd,size,sizeof(*size)) == -1)
+    if(guard_read(fd,size,sizeof(*size)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to read payload data size: %s", strerror(errno));
         return NULL;
@@ -67,7 +114,7 @@ static uint8_t* msg_read_payload(int fd, uint32_t* size)
         M_ERROR(MODULE_NAME, "Unable to allocate memory for payload data: %s", strerror(errno));
         return NULL;
     }
-    if(read(fd,data,*size) == -1)
+    if(guard_read(fd,data,*size) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to read payload data to buffer: %s", strerror(errno));
         free(data);
@@ -106,7 +153,7 @@ int msg_read(int fd, tunnel_msg_t* msg)
         M_ERROR(MODULE_NAME, "Unable to check begin magic number");
         return -1;
     }
-    if(read(fd,&msg->header.type,sizeof(msg->header.type)) == -1)
+    if(guard_read(fd,&msg->header.type,sizeof(msg->header.type)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to read msg type: %s", strerror(errno));
         return -1;
@@ -116,12 +163,12 @@ int msg_read(int fd, tunnel_msg_t* msg)
         M_ERROR(MODULE_NAME, "Unknown msg type: %d", msg->header.type);
         return -1;
     }
-    if(read(fd, &msg->header.channel_id, sizeof(msg->header.channel_id)) == -1)
+    if(guard_read(fd, &msg->header.channel_id, sizeof(msg->header.channel_id)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to read msg channel id");
         return -1;
     }
-    if(read(fd, &msg->header.client_id, sizeof(msg->header.client_id)) == -1)
+    if(guard_read(fd, &msg->header.client_id, sizeof(msg->header.client_id)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to read msg client id");
         return -1;
@@ -147,32 +194,32 @@ int msg_write(int fd, tunnel_msg_t* msg)
 {
     // write begin magic number
     uint16_t number = MSG_MAGIC_BEGIN;
-    if(write(fd,&number, sizeof(number)) == -1)
+    if(guard_write(fd,&number, sizeof(number)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to write begin magic number: %s", strerror(errno));
         return -1;
     }
     // write type
-    if(write(fd,&msg->header.type, sizeof(msg->header.type)) == -1)
+    if(guard_write(fd,&msg->header.type, sizeof(msg->header.type)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to write msg type: %s", strerror(errno));
         return -1;
     }
     // write channel id
-    if(write(fd,&msg->header.channel_id, sizeof(msg->header.channel_id)) == -1)
+    if(guard_write(fd,&msg->header.channel_id, sizeof(msg->header.channel_id)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to write msg channel id: %s", strerror(errno));
         return -1;
     }
     //write client id
-    if(write(fd,&msg->header.client_id, sizeof(msg->header.client_id)) == -1)
+    if(guard_write(fd,&msg->header.client_id, sizeof(msg->header.client_id)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to write msg client id: %s", strerror(errno));
         return -1;
     }
     // write payload len
     
-    if(write(fd,&msg->header.size, sizeof(msg->header.size)) == -1)
+    if(guard_write(fd,&msg->header.size, sizeof(msg->header.size)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to write msg payload length: %s", strerror(errno));
         return -1;
@@ -180,14 +227,14 @@ int msg_write(int fd, tunnel_msg_t* msg)
     // write payload data
     if(msg->header.size > 0)
     {
-        if(write(fd,msg->data, msg->header.size) == -1)
+        if(guard_write(fd,msg->data, msg->header.size) == -1)
         {
             M_ERROR(MODULE_NAME, "Unable to write msg payload: %s", strerror(errno));
             return -1;
         }
     }
     number = MSG_MAGIC_END;
-    if(write(fd,&number, sizeof(number)) == -1)
+    if(guard_write(fd,&number, sizeof(number)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to write end magic number: %s", strerror(errno));
         return -1;

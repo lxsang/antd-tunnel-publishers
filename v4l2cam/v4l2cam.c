@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <jpeglib.h>
 #include <sys/ioctl.h>
+#include <sys/timerfd.h>
 
 #include "../tunnel.h"
 
@@ -27,6 +28,7 @@ typedef struct
     uint8_t jpeg_quality;
     uint8_t *raw_buffer;
     int fd;
+    int timerfd;
     int raw_size;
     char dev_name[DEV_SIZE];
     uint8_t queued;
@@ -313,6 +315,43 @@ static int cam_cleanup(cam_setting_t *opts, int close_fd)
     {
         (void)close(opts->fd);
     }
+    if (close_fd && opts->timerfd > 0)
+    {
+        (void)close(opts->timerfd);
+    }
+    return 0;
+}
+static int cam_init_timer(cam_setting_t* opts)
+{
+    long period = 0;
+    if(opts->timerfd != -1)
+    {
+        (void) close(opts->timerfd);
+    }
+    opts->timerfd = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);
+    if (opts->timerfd == -1)
+    {
+        M_ERROR(MODULE_NAME, "Unable to create timerfd: %s", strerror(errno));
+        return -1;
+    }
+    else
+    {
+        period = (long) (1e9 / opts->fps);
+        M_LOG(MODULE_NAME, "Frame period set to %lu", period);
+        struct itimerspec ch_period =
+            {
+                .it_interval = {.tv_sec = 0, .tv_nsec = period},
+                .it_value = {.tv_sec = 0, .tv_nsec = period}, /* first wake-up = interval */
+            };
+
+        if (timerfd_settime(opts->timerfd, 0 /* no flags */, &ch_period, NULL) == -1)
+        {
+            M_ERROR(MODULE_NAME, "Unable to set framerate period: %s", strerror(errno));
+            (void)close(opts->timerfd);
+            opts->timerfd = -1;
+            return -1;
+        }
+    }
     return 0;
 }
 static int cam_apply_setting(cam_setting_t *opts)
@@ -349,6 +388,8 @@ static int cam_apply_setting(cam_setting_t *opts)
         M_ERROR(MODULE_NAME, "Unable to query buffer");
         return -1;
     }
+    (void) cam_init_timer(opts);
+
     return 0;
 }
 
@@ -379,6 +420,7 @@ int main(const int argc, const char **argv)
     tunnel_msg_t msg;
     int status;
     fd_set fd_in;
+    uint64_t expirations_count;
     void *fargv[2];
     unsigned int offset = 0;
     if (argc != 4)
@@ -404,7 +446,7 @@ int main(const int argc, const char **argv)
     {
         exit(1);
     }
-    sock = open_unix_socket((char*)argv[1]);
+    sock = open_unix_socket((char *)argv[1]);
     if (sock == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to open the hotline: %s", argv[1]);
@@ -471,6 +513,12 @@ int main(const int argc, const char **argv)
                 video_setting.queued = 1;
             }
         }
+        if(clients == NULL && video_setting.timerfd != -1)
+        {
+            (void) close(video_setting.timerfd);
+            video_setting.timerfd = -1;
+        }
+
         status = select(maxfd + 1, &fd_in, NULL, NULL, NULL);
         switch (status)
         {
@@ -494,7 +542,23 @@ int main(const int argc, const char **argv)
                     {
                     case CHANNEL_SUBSCRIBE:
                         M_LOG(MODULE_NAME, "Client %d subscribes to the chanel", msg.header.client_id);
+                        if(clients == NULL)
+                        {
+                            (void) cam_init_timer(&video_setting);
+                        }
                         clients = bst_insert(clients, msg.header.client_id, NULL);
+                        // send back the ctl message
+                        msg.header.type = CHANNEL_CTRL;
+                        msg.header.size = 6;
+                        msg.data = (uint8_t *)buff;
+                        (void)memcpy(buff, &video_setting.width, sizeof(video_setting.width));
+                        (void)memcpy(buff + sizeof(video_setting.width), &video_setting.height, sizeof(video_setting.height));
+                        buff[sizeof(video_setting.width) + sizeof(video_setting.height)] = video_setting.fps;
+                        buff[sizeof(video_setting.width) + sizeof(video_setting.height) + 1] = video_setting.jpeg_quality;
+                        if (msg_write(sock, &msg) == -1)
+                        {
+                            running = 0;
+                        }
                         break;
 
                     case CHANNEL_UNSUBSCRIBE:
@@ -515,10 +579,10 @@ int main(const int argc, const char **argv)
                             offset++;
                             (void)memcpy(&video_setting.jpeg_quality, msg.data + offset, 1);
                             M_LOG(MODULE_NAME, "Client request width: %d, height: %d, FPS: %d, JPEG quality: %d",
-                                    video_setting.width,
-                                    video_setting.height,
-                                    video_setting.fps,
-                                    video_setting.jpeg_quality);
+                                  video_setting.width,
+                                  video_setting.height,
+                                  video_setting.fps,
+                                  video_setting.jpeg_quality);
                             if (cam_apply_setting(&video_setting) == -1)
                             {
                                 M_ERROR(MODULE_NAME, "Unable to apply video setting");
@@ -531,6 +595,20 @@ int main(const int argc, const char **argv)
                                 if (cam_start_streaming(video_setting.fd) == -1)
                                 {
                                     running = 0;
+                                }
+                                else
+                                {
+                                    // send back the ctl message
+                                    msg.header.type = CHANNEL_CTRL;
+                                    msg.header.size = 6;
+                                    msg.data = (uint8_t *)buff;
+                                    (void)memcpy(buff, &video_setting.width, sizeof(video_setting.width));
+                                    (void)memcpy(buff + sizeof(video_setting.width), &video_setting.height, sizeof(video_setting.height));
+                                    buff[sizeof(video_setting.width) + sizeof(video_setting.height)] = video_setting.fps;
+                                    buff[sizeof(video_setting.width) + sizeof(video_setting.height) + 1] = video_setting.jpeg_quality;
+                                    fargv[0] = (void *)&msg;
+                                    fargv[1] = (void *)&sock;
+                                    bst_for_each(clients, send_data, fargv, 2);
                                 }
                             }
                         }
@@ -552,6 +630,21 @@ int main(const int argc, const char **argv)
                 if (cam_send_frame_client(&video_setting, sock, clients) == -1)
                 {
                     running = 0;
+                }
+                else
+                {
+                    // check timeout
+                    if(video_setting.timerfd > 0)
+                    {
+                        if(read(video_setting.timerfd, &expirations_count, sizeof(expirations_count)) != (int)sizeof(expirations_count))
+                        {
+                            M_ERROR(MODULE_NAME, "Unable to read timer: %s", strerror(errno));
+                        }
+                        else if (expirations_count > 1u)
+                        {
+                            M_ERROR(MODULE_NAME, "LOOP OVERFLOW COUNT: %llu", expirations_count);
+                        }
+                    }
                 }
             }
             else
