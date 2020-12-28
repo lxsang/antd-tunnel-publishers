@@ -48,7 +48,7 @@ static int msg_read_string(int fd, char* buffer, uint8_t max_length)
     return 0;
 }
 
-static uint8_t* msg_read_payload(int fd, uint16_t* size)
+static uint8_t* msg_read_payload(int fd, uint32_t* size)
 {
     uint8_t* data;
     if(read(fd,size,sizeof(*size)) == -1)

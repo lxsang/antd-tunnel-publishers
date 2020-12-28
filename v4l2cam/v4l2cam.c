@@ -288,6 +288,17 @@ static int cam_stop_streaming(int fd)
 }
 static int cam_cleanup(cam_setting_t *opts, int close_fd)
 {
+    if (video_setting.queued == 1)
+    {
+        if (cam_dequeue_buffer(video_setting.fd) == -1)
+        {
+            return -1;
+        }
+        else
+        {
+            video_setting.queued = 0;
+        }
+    }
     if (cam_stop_streaming(opts->fd) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to stop streaming");
@@ -308,11 +319,17 @@ static int cam_apply_setting(cam_setting_t *opts)
 {
     if (opts->raw_buffer != NULL)
     {
-        if (cam_cleanup(opts, 0) == -1)
+        if (cam_cleanup(opts, 1) == -1)
         {
             M_ERROR(MODULE_NAME, "Unable to cleanup setting");
             return -1;
         }
+    }
+    opts->fd = open(opts->dev_name, O_RDWR);
+    if (opts->fd == -1)
+    {
+        M_ERROR(MODULE_NAME, "Unable to open device: %s", video_setting.dev_name);
+        return -1;
     }
     if (cam_set_format(opts) == -1)
     {
@@ -382,13 +399,6 @@ int main(const int argc, const char **argv)
     video_setting.jpeg_quality = 60;
     video_setting.raw_buffer = NULL;
     video_setting.queued = 0;
-
-    video_setting.fd = open(video_setting.dev_name, O_RDWR);
-    if (video_setting.fd == -1)
-    {
-        M_ERROR(MODULE_NAME, "Unable to open device: %s", video_setting.dev_name);
-        exit(1);
-    }
     // apply the default setting
     if (cam_apply_setting(&video_setting) == -1)
     {
@@ -461,9 +471,7 @@ int main(const int argc, const char **argv)
                 video_setting.queued = 1;
             }
         }
-
-        status = select(sock + 1, &fd_in, NULL, NULL, NULL);
-
+        status = select(maxfd + 1, &fd_in, NULL, NULL, NULL);
         switch (status)
         {
         case -1:
@@ -506,6 +514,11 @@ int main(const int argc, const char **argv)
                             (void)memcpy(&video_setting.fps, msg.data + offset, 1);
                             offset++;
                             (void)memcpy(&video_setting.jpeg_quality, msg.data + offset, 1);
+                            M_LOG(MODULE_NAME, "Client request width: %d, height: %d, FPS: %d, JPEG quality: %d",
+                                    video_setting.width,
+                                    video_setting.height,
+                                    video_setting.fps,
+                                    video_setting.jpeg_quality);
                             if (cam_apply_setting(&video_setting) == -1)
                             {
                                 M_ERROR(MODULE_NAME, "Unable to apply video setting");
@@ -518,20 +531,6 @@ int main(const int argc, const char **argv)
                                 if (cam_start_streaming(video_setting.fd) == -1)
                                 {
                                     running = 0;
-                                }
-                                else
-                                {
-                                    if (video_setting.queued == 1)
-                                    {
-                                        if (cam_dequeue_buffer(video_setting.fd) == -1)
-                                        {
-                                            running = 0;
-                                        }
-                                        else
-                                        {
-                                            video_setting.queued = 0;
-                                        }
-                                    }
                                 }
                             }
                         }
@@ -554,6 +553,11 @@ int main(const int argc, const char **argv)
                 {
                     running = 0;
                 }
+            }
+            else
+            {
+                // sleep to save CPU 100 ms
+                usleep(100000);
             }
         }
     }

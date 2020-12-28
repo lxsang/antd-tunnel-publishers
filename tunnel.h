@@ -22,7 +22,7 @@ typedef struct {
     uint8_t type;
     uint16_t channel_id;
     uint16_t client_id;
-    uint16_t size;
+    uint32_t size;
 } tunnel_msg_h_t;
 
 typedef struct{
