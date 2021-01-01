@@ -14,7 +14,7 @@
 #include <antd/list.h>
 #include <antd/bst.h>
 #include <antd/utils.h>
-
+#include <sys/time.h>
 #include "../tunnel.h"
 
 #define MODULE_NAME     "vterm"

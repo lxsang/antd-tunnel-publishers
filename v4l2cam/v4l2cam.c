@@ -14,6 +14,8 @@
 #include <jpeglib.h>
 #include <sys/ioctl.h>
 #include <sys/timerfd.h>
+#include <time.h>
+#include <sys/time.h>
 
 #include "../tunnel.h"
 
