@@ -230,7 +230,7 @@ int cam_grab_frame(cam_setting_t *opts)
             M_ERROR(MODULE_NAME, "Unable to write frame to file: %s", strerror(errno));
         }
         close(file);
-        M_LOG(MODULE_NAME, "written %d bytes to file", size);
+        M_LOG(MODULE_NAME, "written %d bytes to file", (int)size);
     }
 
     free(jpeg_frame);
@@ -644,7 +644,7 @@ int main(const int argc, const char **argv)
                         }
                         else if (expirations_count > 1u)
                         {
-                            M_ERROR(MODULE_NAME, "LOOP OVERFLOW COUNT: %llu", expirations_count);
+                            M_ERROR(MODULE_NAME, "LOOP OVERFLOW COUNT: %lu", (long unsigned int)expirations_count);
                         }
                     }
                 }
