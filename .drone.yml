@@ -11,7 +11,7 @@ steps:
 - name: clone
   commands:
   - pwd
-  - git clone ssh://git@iohub.dev:2222/lxsang/antd-tunnel-publishers.git
+  - git clone ssh://git@iohub.dev/lxsang/antd-tunnel-publishers.git
   - cd ./antd-tunnel-publishers && git checkout master
 - name: build
   commands:
