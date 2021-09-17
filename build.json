@@ -1,0 +1,73 @@
+{
+    "name": "antd-tunnel-publishers",
+    "targets":{
+        "configure": {
+            "require": ["linux"],
+            "jobs": [
+                {
+                    "name": "linux-exec",
+                    "data": {
+                        "cmd":"libtoolize",
+                        "pwd": "home://workspace/antd-tunnel-publishers"
+                    }
+                },
+                {
+                    "name": "linux-exec",
+                    "data": {
+                        "cmd":"aclocal",
+                        "pwd": "home://workspace/antd-tunnel-publishers"
+                    }
+                },
+                {
+                    "name": "linux-exec",
+                    "data": {
+                        "cmd":"autoconf",
+                        "pwd": "home://workspace/antd-tunnel-publishers"
+                    }
+                },
+                {
+                    "name": "linux-exec",
+                    "data": {
+                        "cmd":"automake --add-missing",
+                        "pwd": "home://workspace/antd-tunnel-publishers"
+                    }
+                },
+                {
+                    "name": "linux-exec",
+                    "data": {
+                        "cmd":"./configure --prefix=/usr --enable-debug=no",
+                        "pwd": "home://workspace/antd-tunnel-publishers"
+                    }
+                }
+            ]
+        },
+        "clean": {
+            "require": ["linux"],
+            "jobs": [
+                {
+                    "name": "linux-exec",
+                    "data": {
+                        "cmd":"make clean",
+                        "pwd": "home://workspace/antd-tunnel-publishers"
+                    }
+                }
+            ]
+        },
+        "build": {
+            "require": ["linux"],
+            "jobs": [
+                {
+                    "name": "linux-exec",
+                    "data": {
+                        "cmd":"make",
+                        "pwd": "home://workspace/antd-tunnel-publishers"
+                    }
+                }
+            ]
+        },
+        "clean and build": {
+            "depend": ["clean", "build"],
+            "jobs": []
+        }
+    }
+}

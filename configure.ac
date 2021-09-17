@@ -88,6 +88,7 @@ AC_CONFIG_FILES([
     Makefile 
     vterm/Makefile
     wfifo/Makefile
+    syslog/Makefile
 ])
 
 if test x"${cam_enable}" == x"yes" ; then

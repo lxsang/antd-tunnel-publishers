@@ -65,7 +65,7 @@ int main(int argc, char **argv)
 
     if (argc != 5)
     {
-        printf("Usage: %s path/to/hotline/socket channel_name input_file\n", argv[0]);
+        printf("Usage: %s path/to/hotline/socket channel_name input_file r/w\n", argv[0]);
         return -1;
     }
     signal(SIGPIPE, SIG_IGN);
