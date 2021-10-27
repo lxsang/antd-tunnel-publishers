@@ -34,11 +34,21 @@ static void int_handler(int dummy) {
     running = 0;
 }
 
-static vterm_proc_t* terminal_new(void)
+static vterm_proc_t* terminal_new(const char* user)
 {
     int fdm, fds, rc;
     pid_t pid;
     vterm_proc_t* proc = NULL;
+    char cmd[64];
+    (void)memset(cmd, 0, sizeof(cmd));
+    if(user && strlen(user) > 0)
+    {
+        snprintf(cmd, sizeof(cmd),"TERM=linux sudo -iu %s", user);
+    }
+    else
+    {
+        snprintf(cmd, sizeof(cmd),"TERM=linux login");
+    }
     // Check arguments
     fdm = posix_openpt(O_RDWR);
     if (fdm < 0)
@@ -112,7 +122,7 @@ static vterm_proc_t* terminal_new(void)
         ioctl(0, TIOCSCTTY, 1);
         
         //system("/bin/bash");
-        rc = system("TERM=linux login");
+        rc = system(cmd);
         //M_LOG("%s\n","Terminal exit");
         _exit(1);
     }
@@ -411,9 +421,9 @@ int main(int argc, char** argv)
                         switch (msg.header.type)
                         {
                         case CHANNEL_SUBSCRIBE:
-                            M_LOG(MODULE_NAME, "Client %d subscribes to the chanel", msg.header.client_id);
+                            M_LOG(MODULE_NAME, "Client %d subscribes to the chanel with user [%s]", msg.header.client_id, msg.data);
                             // create new process
-                            vterm_proc_t* proc = terminal_new();
+                            vterm_proc_t* proc = terminal_new(msg.data);
                             if(proc == NULL)
                             {
                                 M_ERROR(MODULE_NAME, "Unable to create new terminal for client %d", msg.header.client_id);
