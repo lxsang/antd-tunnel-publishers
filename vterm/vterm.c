@@ -43,7 +43,7 @@ static vterm_proc_t* terminal_new(const char* user)
     (void)memset(cmd, 0, sizeof(cmd));
     if(user && strlen(user) > 0)
     {
-        snprintf(cmd, sizeof(cmd),"TERM=linux sudo -iu %s", user);
+        snprintf(cmd, sizeof(cmd),"TERM=linux su -l %s", user);
     }
     else
     {
