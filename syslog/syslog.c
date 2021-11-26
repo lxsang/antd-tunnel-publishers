@@ -218,7 +218,7 @@ int main(int argc, char **argv)
     // unsubscribe all client
     fargv[0] = (void *)&fd;
     bst_for_each(clients, unsubscribe, fargv, 1);
-
+    bst_free(clients);
     // close the channel
     M_LOG(MODULE_NAME, "Close the channel %s (%d)", argv[2], fd);
     msg.header.type = CHANNEL_CLOSE;
