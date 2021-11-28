@@ -423,6 +423,7 @@ int main(const int argc, const char **argv)
     int status;
     fd_set fd_in;
     uint64_t expirations_count;
+    uint16_t net16;
     void *fargv[2];
     unsigned int offset = 0;
     if (argc != 4)
@@ -553,8 +554,10 @@ int main(const int argc, const char **argv)
                         msg.header.type = CHANNEL_CTRL;
                         msg.header.size = 6;
                         msg.data = (uint8_t *)buff;
-                        (void)memcpy(buff, &video_setting.width, sizeof(video_setting.width));
-                        (void)memcpy(buff + sizeof(video_setting.width), &video_setting.height, sizeof(video_setting.height));
+                        net16 = htons(video_setting.width);
+                        (void)memcpy(buff, &net16, sizeof(video_setting.width));
+                        net16 = htons(video_setting.height);
+                        (void)memcpy(buff + sizeof(video_setting.height), &net16, sizeof(video_setting.height));
                         buff[sizeof(video_setting.width) + sizeof(video_setting.height)] = video_setting.fps;
                         buff[sizeof(video_setting.width) + sizeof(video_setting.height) + 1] = video_setting.jpeg_quality;
                         if (msg_write(sock, &msg) == -1)
@@ -574,8 +577,10 @@ int main(const int argc, const char **argv)
                         {
                             offset = 0;
                             (void)memcpy(&video_setting.width, msg.data, 2);
+                            video_setting.width = ntohs(video_setting.width);
                             offset += 2;
                             (void)memcpy(&video_setting.height, msg.data + offset, 2);
+                            video_setting.height = ntohs(video_setting.height);
                             offset += 2;
                             (void)memcpy(&video_setting.fps, msg.data + offset, 1);
                             offset++;
@@ -604,8 +609,10 @@ int main(const int argc, const char **argv)
                                     msg.header.type = CHANNEL_CTRL;
                                     msg.header.size = 6;
                                     msg.data = (uint8_t *)buff;
-                                    (void)memcpy(buff, &video_setting.width, sizeof(video_setting.width));
-                                    (void)memcpy(buff + sizeof(video_setting.width), &video_setting.height, sizeof(video_setting.height));
+                                    net16 = htons(video_setting.width);
+                                    (void)memcpy(buff, &net16, sizeof(video_setting.width));
+                                    net16 = htons(video_setting.height);
+                                    (void)memcpy(buff + sizeof(video_setting.height), &net16, sizeof(video_setting.height));
                                     buff[sizeof(video_setting.width) + sizeof(video_setting.height)] = video_setting.fps;
                                     buff[sizeof(video_setting.width) + sizeof(video_setting.height) + 1] = video_setting.jpeg_quality;
                                     fargv[0] = (void *)&msg;

@@ -67,6 +67,7 @@ static int msg_check_number(int fd, uint16_t number)
         M_ERROR(MODULE_NAME, "Unable to read integer value: %s", strerror(errno));
         return -1;
     }
+    value = ntohs(value);
     if(number != value)
     {
         M_ERROR(MODULE_NAME, "Value mismatches: %04X, expected %04X", value, number);
@@ -103,6 +104,7 @@ static uint8_t* msg_read_payload(int fd, uint32_t* size)
         M_ERROR(MODULE_NAME, "Unable to read payload data size: %s", strerror(errno));
         return NULL;
     }
+    *size = ntohl(*size);
     if(*size <= 0)
     {
         return NULL;
@@ -168,11 +170,13 @@ int msg_read(int fd, tunnel_msg_t* msg)
         M_ERROR(MODULE_NAME, "Unable to read msg channel id");
         return -1;
     }
+    msg->header.channel_id = ntohs(msg->header.channel_id);
     if(guard_read(fd, &msg->header.client_id, sizeof(msg->header.client_id)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to read msg client id");
         return -1;
     }
+    msg->header.client_id = ntohs(msg->header.client_id);
     if((msg->data = msg_read_payload(fd, &msg->header.size)) == NULL && msg->header.size != 0)
     {
         M_ERROR(MODULE_NAME, "Unable to read msg payload data");
@@ -193,8 +197,10 @@ int msg_read(int fd, tunnel_msg_t* msg)
 int msg_write(int fd, tunnel_msg_t* msg)
 {
     // write begin magic number
-    uint16_t number = MSG_MAGIC_BEGIN;
-    if(guard_write(fd,&number, sizeof(number)) == -1)
+    uint16_t net16;
+    uint32_t net32;
+    net16 = htons(MSG_MAGIC_BEGIN);
+    if(guard_write(fd,&net16, sizeof(net16)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to write begin magic number: %s", strerror(errno));
         return -1;
@@ -206,20 +212,22 @@ int msg_write(int fd, tunnel_msg_t* msg)
         return -1;
     }
     // write channel id
-    if(guard_write(fd,&msg->header.channel_id, sizeof(msg->header.channel_id)) == -1)
+    net16 = htons(msg->header.channel_id);
+    if(guard_write(fd,&net16, sizeof(msg->header.channel_id)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to write msg channel id: %s", strerror(errno));
         return -1;
     }
     //write client id
-    if(guard_write(fd,&msg->header.client_id, sizeof(msg->header.client_id)) == -1)
+    net16 = htons(msg->header.client_id);
+    if(guard_write(fd,&net16, sizeof(msg->header.client_id)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to write msg client id: %s", strerror(errno));
         return -1;
     }
     // write payload len
-    
-    if(guard_write(fd,&msg->header.size, sizeof(msg->header.size)) == -1)
+    net32 = htonl(msg->header.size);
+    if(guard_write(fd,&net32, sizeof(msg->header.size)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to write msg payload length: %s", strerror(errno));
         return -1;
@@ -233,8 +241,8 @@ int msg_write(int fd, tunnel_msg_t* msg)
             return -1;
         }
     }
-    number = MSG_MAGIC_END;
-    if(guard_write(fd,&number, sizeof(number)) == -1)
+    net16 = htons(MSG_MAGIC_END);
+    if(guard_write(fd,&net16, sizeof(net16)) == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to write end magic number: %s", strerror(errno));
         return -1;

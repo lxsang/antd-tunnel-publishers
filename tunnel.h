@@ -1,6 +1,7 @@
 #ifndef TUNNEL_H
 #define TUNNEL_H
 #include <stdint.h>
+#include <netinet/in.h>
 #include "log.h"
 
 #define MAX_CHANNEL_PATH            108
