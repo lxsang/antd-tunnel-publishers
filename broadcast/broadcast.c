@@ -30,7 +30,8 @@
 
 #define BC_SUBSCRIPTION 0x0A
 #define BC_UNSUBSCRIPTION 0x0B
-#define BC_QUERY_GROUP 0x0C
+#define BC_QUERY_USER 0x0C
+#define BC_QUERY_GROUP 0x0D
 
 #define MAX_STR_LEN 255
 
@@ -53,7 +54,8 @@ static void int_handler(int dummy);
 static void bc_get_handle(bst_node_t *node, void **argv, int argc);
 static void bc_unsubscription(bst_node_t *node, void **args, int argc);
 static void unsubscribe(bst_node_t *node, void **args, int argc);
-static void bc_send_query(bst_node_t *node, void **argv, int argc);
+static void bc_send_query_user(bst_node_t *node, void **argv, int argc);
+static void bc_send_query_group(bst_node_t *node, void **argv, int argc);
 
 static bst_node_t *clients = NULL;
 static uint8_t msg_buffer[BUFFLEN];
@@ -97,6 +99,19 @@ static void bc_unsubscription(bst_node_t *node, void **args, int argc)
     args[2] = &hash;
     M_DEBUG(MODULE_NAME, "All clients subscribed to the groupe %d is notified that user is leaving", hash);
     bst_for_each(clients, bc_notify, args, 3);
+    if(node->data)
+    {
+        free(node->data);
+        node->data = NULL;
+    }
+}
+
+static void bc_free_groupname(void* data)
+{
+    if(data)
+    {
+        free(data);
+    }
 }
 static void unsubscribe(bst_node_t *node, void **args, int argc)
 {
@@ -137,7 +152,28 @@ static void unsubscribe(bst_node_t *node, void **args, int argc)
         M_ERROR(MODULE_NAME, "Unable to request unsubscribe to client %d", node->key);
     }
 }
-static void bc_send_query(bst_node_t *node, void **argv, int argc)
+static void bc_send_query_group(bst_node_t *node, void **argv, int argc)
+{
+    (void)argc;
+    int *fd = (int *)argv[0];
+    tunnel_msg_t *msg = (tunnel_msg_t *)argv[1];
+    char *gname = NULL;
+    if (!node->data)
+    {
+        return;
+    }
+    int net32 = htonl(node->key);
+    (void)memcpy(&msg->data[1], &net32, sizeof(net32));
+    gname = (char*)node->data;
+    (void)memcpy(&msg->data[sizeof(net32) + 1u], gname, strlen(gname));
+    msg->header.size = sizeof(net32) + 1u + strlen(gname);
+    M_DEBUG(MODULE_NAME, "Sent group query to client %d: group %s (%d)", msg->header.client_id, gname, node->key);
+    if (msg_write(*fd, msg) == -1)
+    {
+        M_ERROR(MODULE_NAME, "Unable to write query message to client %d", node->key);
+    }
+}
+static void bc_send_query_user(bst_node_t *node, void **argv, int argc)
 {
     (void)argc;
     int *fd = (int *)argv[0];
@@ -156,9 +192,10 @@ static void bc_send_query(bst_node_t *node, void **argv, int argc)
     }
     (void)memcpy(&msg->data[len], bc_client->name, strlen(bc_client->name));
     msg->header.size = len + strlen(bc_client->name);
+    M_DEBUG(MODULE_NAME, "Sent user query to client %d: User %s is in group %d", msg->header.client_id, bc_client->name, *group);
     if (msg_write(*fd, msg) == -1)
     {
-        M_ERROR(MODULE_NAME, "Unable to write notify message to client %d", node->key);
+        M_ERROR(MODULE_NAME, "Unable to write query message to client %d", node->key);
     }
 }
 static void bc_notify(bst_node_t *node, void **argv, int argc)
@@ -339,8 +376,15 @@ int main(int argc, char **argv)
                                     memcpy(name, &request.data[1], request.header.size - 1u);
                                     name[request.header.size - 1u] = '\0';
                                     hash = simple_hash(name);
-                                    bc_client->groups = (void *)bst_insert(bc_client->groups, hash, NULL);
-                                    M_LOG(MODULE_NAME, "Client %d subscription to broadcast group: %s (%d)", request.header.client_id, name, hash);
+                                    if(bst_find(bc_client->groups, hash) == NULL)
+                                    {
+                                        bc_client->groups = (void *)bst_insert(bc_client->groups, hash, strdup(name));
+                                        M_LOG(MODULE_NAME, "Client %d subscription to broadcast group: %s (%d)", request.header.client_id, name, hash);
+                                    }
+                                    else
+                                    {
+                                        M_LOG(MODULE_NAME, "Client %d is already subscribed to the group %s", request.header.client_id, name);
+                                    }
                                 }
                                 else
                                 {
@@ -366,13 +410,14 @@ int main(int argc, char **argv)
                                 }
                                 break;
 
-                            case BC_QUERY_GROUP:
+                            case BC_QUERY_USER:
                                 (void)memcpy(&hash, &request.data[1], sizeof(hash));
                                 hash = ntohl(hash);
                                 net32 = htonl(hash);
                                 (void)memcpy(&response.data[1], &net32, sizeof(net32));
                                 len = len = sizeof(net32) + 1u;
                                 fargv[3] = &len;
+                                response.header.client_id = request.header.client_id;
                                 if (bst_find(bc_client->groups, hash) == NULL)
                                 {
                                     BC_ERROR(response, fd, request.header.client_id, "Client %d query a group that it does not belong to", request.header.client_id);
@@ -380,8 +425,17 @@ int main(int argc, char **argv)
                                 else
                                 {
                                     // data format [type][4bytes group][user]
-                                    M_LOG(MODULE_NAME, "Client %d query group: %s (%d)", request.header.client_id, name, hash);
-                                    bst_for_each(clients, bc_send_query, fargv, 4);
+                                    M_LOG(MODULE_NAME, "Client %d query  user from group %d", request.header.client_id, hash);
+                                    bst_for_each(clients, bc_send_query_user, fargv, 4);
+                                }
+                                break;
+                            case BC_QUERY_GROUP:
+                                if(bc_client->groups)
+                                {
+                                    /** send back group to client one by one inform of [type][gid 4][group name]*/
+                                    response.header.client_id = request.header.client_id;
+                                    M_LOG(MODULE_NAME, "Client %d query  all user subscribed group", request.header.client_id);
+                                    bst_for_each(bc_client->groups, bc_send_query_group, fargv, 2);
                                 }
                                 break;
                             default:
