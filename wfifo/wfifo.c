@@ -211,13 +211,6 @@ int main(int argc, char **argv)
     signal(SIGABRT, SIG_IGN);
     signal(SIGINT, int_handler);
 
-    // create the fifo first
-    (void)unlink(argv[3]);
-    if (mkfifo(argv[3], 0666) == -1)
-    {
-        M_ERROR(MODULE_NAME, "Unable to create FIFO %s: %s", argv[3], strerror(errno));
-        return -1;
-    }
     // now try to request new channel from hotline
     fd = open_unix_socket(argv[1]);
     if (fd == -1)
