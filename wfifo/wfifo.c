@@ -133,8 +133,9 @@ int init_fifo(char *buff, const char *base, const char *user)
     (void)memset(buff, 0, BUFFLEN);
     if (stat(base, &path_stat) == 0)
     {
-        if (S_ISREG(path_stat.st_mode))
+        if (S_ISDIR(path_stat.st_mode))
         {
+            M_DEBUG(MODULE_NAME, "%s is a directory", base);
             // is directory
             if (user == NULL)
             {
@@ -151,6 +152,14 @@ int init_fifo(char *buff, const char *base, const char *user)
             }
             uid = pwd->pw_uid;
         }
+        else
+        {
+            M_DEBUG(MODULE_NAME, "%s is not a directory", base);
+        }
+    }
+    else
+    {
+        M_DEBUG(MODULE_NAME, "Unable to state %s: %s", base, strerror(errno));
     }
     if (generic_fd)
     {

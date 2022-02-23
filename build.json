@@ -1,5 +1,5 @@
 {
-    "name": "antd-tunnel-publishers",
+    "name": "ant-http",
     "targets":{
         "configure": {
             "require": ["linux"],
@@ -7,36 +7,31 @@
                 {
                     "name": "linux-exec",
                     "data": {
-                        "cmd":"libtoolize",
-                        "pwd": "home://workspace/antd-tunnel-publishers"
+                        "cmd":"libtoolize"
                     }
                 },
                 {
                     "name": "linux-exec",
                     "data": {
-                        "cmd":"aclocal",
-                        "pwd": "home://workspace/antd-tunnel-publishers"
+                        "cmd":"aclocal"
                     }
                 },
                 {
                     "name": "linux-exec",
                     "data": {
-                        "cmd":"autoconf",
-                        "pwd": "home://workspace/antd-tunnel-publishers"
+                        "cmd":"autoconf"
                     }
                 },
                 {
                     "name": "linux-exec",
                     "data": {
-                        "cmd":"automake --add-missing",
-                        "pwd": "home://workspace/antd-tunnel-publishers"
+                        "cmd":"automake --add-missing"
                     }
                 },
                 {
                     "name": "linux-exec",
                     "data": {
-                        "cmd":"./configure --prefix=/usr --enable-debug=no",
-                        "pwd": "home://workspace/antd-tunnel-publishers"
+                        "cmd":"./configure --prefix=/opt/www"
                     }
                 }
             ]
@@ -47,8 +42,7 @@
                 {
                     "name": "linux-exec",
                     "data": {
-                        "cmd":"make clean",
-                        "pwd": "home://workspace/antd-tunnel-publishers"
+                        "cmd":"make clean"
                     }
                 }
             ]
@@ -59,8 +53,7 @@
                 {
                     "name": "linux-exec",
                     "data": {
-                        "cmd":"make",
-                        "pwd": "home://workspace/antd-tunnel-publishers"
+                        "cmd":"make"
                     }
                 }
             ]
@@ -68,6 +61,24 @@
         "clean and build": {
             "depend": ["clean", "build"],
             "jobs": []
+        },
+        "release": {
+            "require": ["linux"],
+            "depend": ["clean"],
+            "jobs": [
+                {
+                    "name": "linux-exec",
+                    "data": {
+                        "cmd":"make distcheck"
+                    }
+                },
+                {
+                    "name": "linux-exec",
+                    "data": {
+                        "cmd":"mv *.tar.gz dist"
+                    }
+                }
+            ]
         }
     }
 }
