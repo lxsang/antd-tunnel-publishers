@@ -9,9 +9,9 @@ runner_SOURCES = runner.c
 
 #sysconf_DATA = runner.ini
 install-data-local:
-	- cp runner.ini $(prefix)/
-	- cp runnerd $(prefix)/bin
-	- [ -d /etc/systemd/system/ ] && cp antd-tunnel-publisher.service /etc/systemd/system/
+	- cp runner.ini $(DESTDIR)/$(prefix)/
+	- cp runnerd $(DESTDIR)/$(prefix)/bin
+	- [ -d $(DESTDIR)/etc/systemd/system/ ] && cp antd-tunnel-publisher.service $(DESTDIR)/etc/systemd/system/
 
 EXTRA_DIST = runner.ini runnerd tunnel.h antd-tunnel-publisher.service log.h
 
