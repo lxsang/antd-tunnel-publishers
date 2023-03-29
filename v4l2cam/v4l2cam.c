@@ -449,7 +449,7 @@ int main(const int argc, const char **argv)
     {
         exit(1);
     }
-    sock = open_unix_socket((char *)argv[1]);
+    sock = open_socket((char *)argv[1]);
     if (sock == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to open the hotline: %s", argv[1]);

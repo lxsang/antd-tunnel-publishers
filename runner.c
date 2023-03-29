@@ -42,6 +42,7 @@ static void execute_command(list_t *plist)
     ASSERT(pid != -1, "Unable to fork: %s", strerror(errno));
     if (pid == 0)
     {
+        M_LOG(MODULE_NAME, "Running %s", cmd.params[0]);
         execve(cmd.params[0], &cmd.params[0], &cmd.envs[0]);
         // Nothing below this line should be executed by child process. If so,
         // it means that the execl function wasn't successfull, so lets exit:

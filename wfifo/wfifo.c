@@ -213,6 +213,7 @@ int main(int argc, char **argv)
 
     if (argc != 5)
     {
+        M_LOG(MODULE_NAME, "Usage: %s path/to/hotline/socket channel_name input_file r/w\n", argv[0]);
         printf("Usage: %s path/to/hotline/socket channel_name input_file r/w\n", argv[0]);
         return -1;
     }
@@ -221,7 +222,7 @@ int main(int argc, char **argv)
     signal(SIGINT, int_handler);
 
     // now try to request new channel from hotline
-    fd = open_unix_socket(argv[1]);
+    fd = open_socket(argv[1]);
     if (fd == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to open the hotline: %s", argv[1]);
@@ -240,7 +241,7 @@ int main(int argc, char **argv)
         (void)close(fd);
         return -1;
     }
-    M_LOG(MODULE_NAME, "Wait for comfirm creation of %s", argv[2]);
+    M_LOG(MODULE_NAME, "Wait for confirm creation of %s", argv[2]);
     // now wait for message
     if (msg_read(fd, &msg) == -1)
     {

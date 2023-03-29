@@ -5,11 +5,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <sys/un.h>
 
 #include "tunnel.h"
 
 #define MODULE_NAME "api"
+#ifdef MAX_PATH_LEN
+#undef MAX_PATH_LEN
+#endif
+#define MAX_PATH_LEN 108
 
 static int guard_read(int fd, void* buffer, size_t size)
 {
@@ -126,7 +131,7 @@ static uint8_t* msg_read_payload(int fd, uint32_t* size)
 }
 
 
-int open_unix_socket(char* path)
+static int open_unix_socket(char* path)
 {
     struct sockaddr_un address;
     address.sun_family = AF_UNIX;
@@ -145,6 +150,69 @@ int open_unix_socket(char* path)
     }
     M_LOG(MODULE_NAME, "Socket %s is created successfully", path);
     return fd;
+}
+
+static int open_tcp_socket(char * address, int port)
+{
+    struct sockaddr_in servaddr;
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd == -1)
+    {
+        M_ERROR(MODULE_NAME, "Cannot create TCP socket %s:%d: %s",address, port, strerror(errno));
+        return -1;
+    }
+    
+    bzero(&servaddr, sizeof(servaddr));
+ 
+    // assign IP, PORT
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr(address);
+    servaddr.sin_port = htons(port);
+ 
+    // connect the client socket to server socket
+    if (connect(fd, (struct sockaddr*)&servaddr, sizeof(servaddr))!= 0) {
+        M_ERROR(MODULE_NAME, "Unable to connect to socket '%s:%d': %s", address, port, strerror(errno));
+        close(fd);
+        return -1;
+    }
+    M_LOG(MODULE_NAME, "Connected to server: %s:%d at [%d]", address, port, fd);
+    return fd;
+}
+
+int open_socket( char *path)
+{
+    regmatch_t regex_matches[3];
+    if(strncmp(path,"unix:", 5) == 0)
+    {
+        if(strlen(path + 5) > MAX_PATH_LEN - 1)
+        {
+            M_ERROR(MODULE_NAME, "socket configuration is too long: %s", path);
+            return -1;
+        }
+        M_LOG(MODULE_NAME, "Found Unix domain socket configuration: %s", path + 5);
+        return open_unix_socket(path + 5);
+    }
+    else if(regex_match("^([a-zA-Z0-9\\-_\\.]+):([0-9]+)$", path,3, regex_matches))
+    {
+        if(regex_matches[1].rm_eo - regex_matches[1].rm_so > MAX_PATH_LEN - 1)
+        {
+            M_ERROR(MODULE_NAME, "socket configuration is too long: %s", path);
+            return -1;
+        }
+        char address[MAX_PATH_LEN];
+        memcpy(address, path + regex_matches[2].rm_so, regex_matches[2].rm_eo - regex_matches[2].rm_so);
+        int port = atoi(address);
+        (void*) memset(address, 0, MAX_PATH_LEN);
+        memcpy(address, path + regex_matches[1].rm_so, regex_matches[1].rm_eo - regex_matches[1].rm_so);
+        M_LOG(MODULE_NAME, "Found TCP socket configuration: %s:%d", address, port);
+        return open_tcp_socket(address, port);
+    }
+    else
+    {
+        M_ERROR(MODULE_NAME, "Unknown socket configuration: %s", path);
+        return -1;
+    }
+    return 0;
 }
 
 
@@ -248,4 +316,41 @@ int msg_write(int fd, tunnel_msg_t* msg)
         return -1;
     }
     return 0;
+}
+
+
+int regex_match(const char* expr,const char* search, int msize, regmatch_t* matches)
+{
+	regex_t regex;
+    int reti;
+    char msgbuf[100];
+    int ret;
+	/* Compile regular expression */
+    reti = regcomp(&regex, expr, REG_ICASE | REG_EXTENDED);
+    if( reti ){ 
+    	//ERROR("Could not compile regex: %s",expr);
+        regerror(reti, &regex, msgbuf, sizeof(msgbuf));
+        M_ERROR(MODULE_NAME, "Regex match failed: %s", msgbuf);
+    	//return 0; 
+    }
+
+	/* Execute regular expression */
+    reti = regexec(&regex, search, msize, matches, 0);
+    if( !reti ){
+            //LOG("Match");
+            ret = 1;
+    }
+    else if( reti == REG_NOMATCH ){
+            //LOG("No match");
+            ret = 0;
+    }
+    else{
+        regerror(reti, &regex, msgbuf, sizeof(msgbuf));
+        //ERROR("Regex match failed: %s\n", msgbuf);
+        ret = 0;
+    }
+
+	
+	regfree(&regex);
+	return ret;
 }

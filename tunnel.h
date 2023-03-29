@@ -2,6 +2,7 @@
 #define TUNNEL_H
 #include <stdint.h>
 #include <netinet/in.h>
+#include <regex.h>
 #include "log.h"
 
 #define MAX_CHANNEL_PATH            108
@@ -31,10 +32,9 @@ typedef struct{
     uint8_t* data;
 } tunnel_msg_t;
 
-int open_unix_socket(char* path);
+int open_socket(char* path);
 int msg_write(int fd, tunnel_msg_t* msg);
 int msg_read(int fd, tunnel_msg_t* msg);
-
-
+int regex_match(const char* expr,const char* search, int msize, regmatch_t* matches);
 
 #endif

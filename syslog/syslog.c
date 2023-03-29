@@ -95,7 +95,7 @@ int main(int argc, char **argv)
     M_LOG(MODULE_NAME, "Unix domain socket: %s created", argv[3]);
     M_LOG(MODULE_NAME, "Hotline is: %s", argv[1]);
     // now try to request new channel from hotline
-    fd = open_unix_socket(argv[1]);
+    fd = open_socket(argv[1]);
     if (fd == -1)
     {
         M_ERROR(MODULE_NAME, "Unable to open the hotline: %s", argv[1]);
