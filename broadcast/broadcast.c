@@ -320,6 +320,7 @@ int main(int argc, char **argv)
                         {
                             M_LOG(MODULE_NAME, "Client %d is already subscript to this channel", request.header.client_id);
                         }
+                        else
                         {
                             // store user name
                             bc_client = NULL;
