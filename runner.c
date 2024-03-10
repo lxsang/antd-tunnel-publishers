@@ -14,7 +14,7 @@
 #define MODULE_NAME "runner"
 #define MAX_STR_LEN 255u
 /** up to 20 arguments*/
-#define MAX_ARGC 10u
+#define MAX_ARGC 64u
 
 typedef struct
 {
@@ -38,6 +38,10 @@ static void execute_command(list_t *plist)
 {
     pid_t pid;
     ASSERT(cmd.name != NULL, "Invalid service handler (NULL)");
+    for (int i=0; environ[i]!=NULL && cmd.n_envs < MAX_ARGC; i++) {
+        cmd.envs[cmd.n_envs] = environ[i];
+        cmd.n_envs++;
+    }
     pid = fork();
     ASSERT(pid != -1, "Unable to fork: %s", strerror(errno));
     if (pid == 0)
@@ -96,6 +100,8 @@ static int ini_handle(void *user_data, const char *section, const char *name,
     }
     return 1;
 }
+
+extern char **environ;
 
 int main(int argc, char const *argv[])
 {
